@@ -1,0 +1,146 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - dev
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate repository contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Create .env from .env.example
+        run: cp .env.example .env
+
+      - name: Validate JSON and smoke contracts
+        run: |
+          docker compose --env-file .env.example -f .docker/compose.yml run --rm tools sh -lc 'python -m json.tool .devctl.json >/dev/null'
+          docker compose --env-file .env.example -f .docker/compose.yml run --rm tools sh -lc 'python scripts/smoke.py'
+
+      - name: Validate Compose config (all profiles)
+        env:
+          COMPOSE_PROFILES: laravel,next,legacy,workers
+        run: docker compose --env-file .env.example -f .docker/compose.yml config >/dev/null
+
+  scripts:
+    name: Script tooling tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Run scripts/tests
+        run: |
+          docker compose --env-file .env.example -f .docker/compose.yml run --rm tools sh -lc \
+            'python -m unittest discover -s scripts/tests -v'
+
+  plan:
+    name: Detect present presets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      frontend: ${{ steps.detect.outputs.frontend }}
+      backend: ${{ steps.detect.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - id: detect
+        run: |
+          fe='[]'
+          be='[]'
+          add() { echo "$1" | jq -c --arg name "$2" --arg path "$3" '. + [{name: $name, path: $path}]'; }
+          [ -d .presets/next ] && fe=$(add "$fe" next .presets/next)
+          [ -d .presets/legacy/frontend ] && fe=$(add "$fe" legacy .presets/legacy/frontend)
+          [ -d .presets/laravel ] && be=$(add "$be" laravel .presets/laravel)
+          [ -f .presets/legacy/composer.json ] && be=$(add "$be" legacy .presets/legacy)
+          echo "frontend=$fe" >> "$GITHUB_OUTPUT"
+          echo "backend=$be" >> "$GITHUB_OUTPUT"
+
+  frontend:
+    name: Frontend (${{ matrix.app.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: plan
+    if: needs.plan.outputs.frontend != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.plan.outputs.frontend) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.app.path }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: ${{ matrix.app.path }}/package-lock.json
+
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  backend:
+    name: Backend (${{ matrix.app.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: plan
+    if: needs.plan.outputs.backend != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        app: ${{ fromJSON(needs.plan.outputs.backend) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.app.path }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.5"
+          coverage: none
+          tools: composer:v2
+
+      - run: composer install --no-interaction --prefer-dist
+      - run: composer run check
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROFILES: laravel,next,legacy,workers
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate Compose config (all profiles)
+        run: docker compose --env-file .env.example -f .docker/compose.yml config >/dev/null
+
+      - name: Build images (all profiles)
+        run: docker compose --env-file .env.example -f .docker/compose.yml build
+
+      - name: Start services and wait for real health
+        run: python3 scripts/wait-for-healthy.py --profile laravel --profile workers --timeout 150 mysql redis php queue
+
+      - name: Tear down
+        if: always()
+        run: docker compose --env-file .env.example -f .docker/compose.yml --profile laravel --profile workers down --volumes --remove-orphans

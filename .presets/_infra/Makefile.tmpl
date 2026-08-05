@@ -1,0 +1,221 @@
+PHP_RUN := $(COMPOSE_CI) run --rm php sh -lc # preset:laravel,legacy
+NODE_RUN := $(COMPOSE_CI) run --rm node sh -lc # preset:next,legacy
+PHP := devctl exec -T --service php -- sh -lc # preset:laravel,legacy
+NODE := devctl exec -T --service node -- sh -lc # preset:next,legacy
+
+# >>> preset:next
+DEPS_SCOPES += deps-next
+FE_LINT += next-lint
+FE_FMT += next-fmt
+FE_FMT_CHECK += next-fmt-check
+FE_TYPES += next-types
+FE_TEST += next-test
+FE_BUILD += next-build
+FE_AUDIT += next-audit
+# <<< preset
+# >>> preset:legacy
+DEPS_SCOPES += deps-legacy-fe deps-legacy
+FE_LINT += legacy-fe-lint
+FE_FMT += legacy-fe-fmt
+FE_FMT_CHECK += legacy-fe-fmt-check
+FE_TYPES += legacy-fe-types
+FE_TEST += legacy-fe-test
+FE_BUILD += legacy-fe-build
+FE_AUDIT += legacy-fe-audit
+BE_LINT += legacy-lint
+BE_FMT += legacy-fmt
+BE_FMT_CHECK += legacy-fmt-check
+BE_TYPES += legacy-types
+BE_TEST += legacy-test
+BE_AUDIT += legacy-audit
+# <<< preset
+# >>> preset:laravel
+DEPS_SCOPES += deps-laravel
+BE_LINT += laravel-lint
+BE_FMT += laravel-fmt
+BE_FMT_CHECK += laravel-fmt-check
+BE_TYPES += laravel-types
+BE_TEST += laravel-test
+BE_AUDIT += laravel-audit
+# <<< preset
+# >>> preset:next,legacy
+LINT_SCOPES += fe-lint
+FMT_SCOPES += fe-fmt
+FMT_CHECK_SCOPES += fe-fmt-check
+TYPES_SCOPES += fe-types
+TEST_SCOPES += fe-test
+AUDIT_SCOPES += fe-audit
+# <<< preset
+# >>> preset:laravel,legacy
+LINT_SCOPES += be-lint
+FMT_SCOPES += be-fmt
+FMT_CHECK_SCOPES += be-fmt-check
+TYPES_SCOPES += be-types
+TEST_SCOPES += be-test
+AUDIT_SCOPES += be-audit
+# <<< preset
+
+# >>> preset:next
+.PHONY: deps-next
+deps-next:
+	$(NODE_RUN) 'cd /workspace/apps && npm ci'
+# <<< preset
+
+# >>> preset:legacy
+.PHONY: deps-legacy-fe deps-legacy
+deps-legacy-fe:
+	$(NODE_RUN) 'cd /workspace/apps/frontend && npm ci'
+
+deps-legacy:
+	$(PHP_RUN) 'cd /workspace/apps && composer install --no-interaction --prefer-dist'
+# <<< preset
+
+# >>> preset:laravel
+.PHONY: deps-laravel
+deps-laravel:
+	$(PHP_RUN) 'cd /workspace/apps && composer install --no-interaction --prefer-dist'
+# <<< preset
+
+# >>> preset:next,legacy
+.PHONY: fe fe-lint fe-fmt fe-fmt-check fe-types fe-test fe-build fe-audit
+fe: fe-lint fe-fmt-check fe-types fe-test fe-build
+
+fe-lint: $(FE_LINT)
+
+fe-fmt: $(FE_FMT)
+
+fe-fmt-check: $(FE_FMT_CHECK)
+
+fe-types: $(FE_TYPES)
+
+fe-test: $(FE_TEST)
+
+fe-build: $(FE_BUILD)
+
+fe-audit: $(FE_AUDIT)
+# <<< preset
+
+# >>> preset:laravel,legacy
+.PHONY: be be-lint be-fmt be-fmt-check be-types be-test be-audit
+be: be-lint be-fmt-check be-types be-test
+
+be-lint: $(BE_LINT)
+
+be-fmt: $(BE_FMT)
+
+be-fmt-check: $(BE_FMT_CHECK)
+
+be-types: $(BE_TYPES)
+
+be-test: $(BE_TEST)
+
+be-audit: $(BE_AUDIT)
+# <<< preset
+
+# >>> preset:next
+.PHONY: next next-lint next-fmt next-fmt-check next-types next-test next-build next-audit
+next: next-lint next-fmt-check next-types next-test next-build
+
+next-lint:
+	$(NODE) 'cd /workspace/apps && npm run lint'
+
+next-fmt:
+	$(NODE) 'cd /workspace/apps && npm run format'
+
+next-fmt-check:
+	$(NODE) 'cd /workspace/apps && npm run format:check'
+
+next-types:
+	$(NODE) 'cd /workspace/apps && npm run typecheck'
+
+next-test:
+	$(NODE) 'cd /workspace/apps && npm test'
+
+next-build:
+	$(NODE) 'cd /workspace/apps && npm run build'
+
+next-audit:
+	$(NODE_RUN) 'cd /workspace/apps && npm audit --audit-level=high'
+# <<< preset
+
+# >>> preset:legacy
+.PHONY: legacy-fe legacy-fe-lint legacy-fe-fmt legacy-fe-fmt-check legacy-fe-types legacy-fe-test legacy-fe-build legacy-fe-audit
+.PHONY: legacy legacy-lint legacy-fmt legacy-fmt-check legacy-types legacy-test legacy-audit
+legacy-fe: legacy-fe-lint legacy-fe-fmt-check legacy-fe-types legacy-fe-test legacy-fe-build
+
+legacy-fe-lint:
+	$(NODE) 'cd /workspace/apps/frontend && npm run lint'
+
+legacy-fe-fmt:
+	$(NODE) 'cd /workspace/apps/frontend && npm run format'
+
+legacy-fe-fmt-check:
+	$(NODE) 'cd /workspace/apps/frontend && npm run format:check'
+
+legacy-fe-types:
+	$(NODE) 'cd /workspace/apps/frontend && npm run typecheck'
+
+legacy-fe-test:
+	$(NODE) 'cd /workspace/apps/frontend && npm test'
+
+legacy-fe-build:
+	$(NODE) 'cd /workspace/apps/frontend && npm run build'
+
+legacy-fe-audit:
+	$(NODE_RUN) 'cd /workspace/apps/frontend && npm audit --audit-level=high'
+
+legacy: legacy-lint legacy-fmt-check legacy-types legacy-test
+
+legacy-lint:
+	$(PHP) 'cd /workspace/apps && composer run lint'
+
+legacy-fmt:
+	$(PHP) 'cd /workspace/apps && composer run format'
+
+legacy-fmt-check:
+	$(PHP) 'cd /workspace/apps && composer run format:check'
+
+legacy-types:
+	$(PHP) 'cd /workspace/apps && composer run analyse'
+
+legacy-test:
+	$(PHP) 'cd /workspace/apps && composer test'
+
+legacy-audit:
+	$(PHP_RUN) 'cd /workspace/apps && composer audit --locked'
+# <<< preset
+
+# >>> preset:laravel
+.PHONY: laravel laravel-lint laravel-fmt laravel-fmt-check laravel-types laravel-test laravel-audit
+laravel: laravel-lint laravel-fmt-check laravel-types laravel-test
+
+laravel-lint:
+	$(PHP) 'cd /workspace/apps && composer run lint'
+
+laravel-fmt:
+	$(PHP) 'cd /workspace/apps && composer run format'
+
+laravel-fmt-check:
+	$(PHP) 'cd /workspace/apps && composer run format:check'
+
+laravel-types:
+	$(PHP) 'cd /workspace/apps && composer run analyse'
+
+laravel-test:
+	$(PHP) 'cd /workspace/apps && composer test'
+
+laravel-audit:
+	$(PHP_RUN) 'cd /workspace/apps && composer audit --locked'
+# <<< preset
+
+.PHONY: reset-artifacts
+reset-artifacts:
+# >>> preset:next
+	rm -rf apps/node_modules
+# <<< preset
+# >>> preset:legacy
+	rm -rf apps/frontend/node_modules apps/vendor
+# <<< preset
+# >>> preset:laravel
+	rm -rf apps/vendor
+# <<< preset

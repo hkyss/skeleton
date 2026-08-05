@@ -1,0 +1,35 @@
+#!/bin/sh
+set -eu
+
+preset="${APP_PRESET:-none}"
+
+case "$preset" in
+# >>> preset:next
+  next)
+    cd /workspace/apps
+    if [ ! -d node_modules ]; then
+      npm ci
+    fi
+    exec npm run dev -- --hostname 0.0.0.0 --port 3000
+    ;;
+# <<< preset
+# >>> preset:legacy
+  legacy)
+    # No route to this container's port exists for the legacy preset --
+    # public/index.php only ever loads the built bundle from
+    # public/theme/dist (see .presets/legacy/vite.config.ts). Rather than
+    # run an unreachable `vite dev` server, continuously rebuild on save
+    # so editing frontend/ during local dev reflects in a page refresh
+    # without a manual `make legacy-fe-build`.
+    cd /workspace/apps/frontend
+    if [ ! -d node_modules ]; then
+      npm ci
+    fi
+    exec npm run build -- --watch
+    ;;
+# <<< preset
+  *)
+    echo "Node service is idle for preset '${preset}'."
+    exec tail -f /dev/null
+    ;;
+esac

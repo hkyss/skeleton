@@ -1,0 +1,10 @@
+name: "CodeQL config"
+
+paths:
+  - .presets
+
+paths-ignore:
+  - "**/node_modules"
+  - "**/.next"
+  - "**/dist"
+  - "**/build"

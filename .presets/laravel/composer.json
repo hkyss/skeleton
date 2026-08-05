@@ -1,0 +1,36 @@
+{
+  "name": "company/project-skeleton-laravel",
+  "description": "Minimal Laravel-style PHP preset for the project skeleton.",
+  "type": "project",
+  "require": {
+    "php": "^8.3"
+  },
+  "require-dev": {
+    "phpstan/phpstan": "^2.1.55",
+    "phpunit/phpunit": "^12.5.27",
+    "squizlabs/php_codesniffer": "^4.0.1"
+  },
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "serve:health": "php -S 0.0.0.0:8000 -t public",
+    "test": "phpunit",
+    "analyse": "phpstan analyse --memory-limit=256M",
+    "lint": "phpcs",
+    "format": "phpcbf",
+    "format:check": "phpcs",
+    "check": [
+      "@lint",
+      "@analyse",
+      "@test"
+    ]
+  }
+}

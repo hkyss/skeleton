@@ -1,0 +1,53 @@
+name: Bug report
+description: A preset, script, or Compose service does not work as documented
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: preset
+    attributes:
+      label: Active preset
+      options:
+        - laravel
+        - next
+        - legacy
+        - none (fresh clone, placeholder page)
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: The command you ran and what it did instead of what you expected.
+      placeholder: |
+        $ devctl make verify
+        ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: info
+    attributes:
+      label: skeleton.info
+      description: Output of `devctl make skeleton.info`.
+      render: text
+    validations:
+      required: true
+
+  - type: input
+    id: platform
+    attributes:
+      label: Host
+      description: OS and Docker version, e.g. "macOS 15.3, Docker Desktop 4.38".
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: reproduced
+    attributes:
+      label: Confirmations
+      options:
+        - label: This reproduces on a fresh clone, not only in my initialized project.
+          required: false
+        - label: I checked whether the same thing happens on another preset.
+          required: false

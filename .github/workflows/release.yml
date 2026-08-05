@@ -1,0 +1,55 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  release:
+    name: Validate and Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Create .env from .env.example
+        run: cp .env.example .env
+
+      - name: Verify manifest version matches the tag
+        run: |
+          stamped=$(python3 -c 'import json;print(json.load(open("skeleton.manifest.json")).get("version",""))')
+          if [ "$stamped" != "${{ github.ref_name }}" ]; then
+            echo "skeleton.manifest.json version is '$stamped' but the tag is '${{ github.ref_name }}'."
+            echo "Bump the stamp in the commit being tagged, then re-cut the tag."
+            exit 1
+          fi
+          echo "Manifest stamp matches tag: $stamped"
+
+      - name: Validate JSON and smoke contracts
+        run: |
+          docker compose --env-file .env.example -f .docker/compose.yml run --rm tools sh -lc 'python -m json.tool .devctl.json >/dev/null'
+          docker compose --env-file .env.example -f .docker/compose.yml run --rm tools sh -lc 'python scripts/smoke.py'
+
+      - name: Run scripts/tests
+        run: |
+          docker compose --env-file .env.example -f .docker/compose.yml run --rm tools sh -lc \
+            'python -m unittest discover -s scripts/tests -v'
+
+      - name: Validate Compose config (all profiles)
+        env:
+          COMPOSE_PROFILES: laravel,next,legacy,workers
+        run: docker compose --env-file .env.example -f .docker/compose.yml config >/dev/null
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ github.ref_name }}" \
+            --title "${{ github.ref_name }}" \
+            --generate-notes

@@ -1,0 +1,26 @@
+#!/bin/sh
+set -eu
+
+preset="${APP_PRESET:-none}"
+
+case "$preset" in
+# >>> preset:laravel
+  laravel) ;;
+# <<< preset
+# >>> preset:legacy
+  legacy) ;;
+# <<< preset
+  *)
+    echo "No queue worker is configured for preset '${preset}'."
+    exec tail -f /dev/null
+    ;;
+esac
+
+cd /workspace/apps
+
+if [ -f artisan ]; then
+  exec php artisan queue:work --sleep=3 --tries=3
+fi
+
+echo "No queue worker is configured for preset '${preset}'."
+exec tail -f /dev/null

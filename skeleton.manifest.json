@@ -1,0 +1,46 @@
+{
+  "version": "v1.1.1",
+  "presets": ["laravel", "next", "legacy"],
+  "marked_files": [
+    "Makefile"
+  ],
+  "skeleton_owned": [
+    ".docker/**",
+    ".presets/_infra/**",
+    "scripts/smoke.py",
+    "scripts/skeleton_info.py",
+    "scripts/skeleton_presets.py",
+    "scripts/update-skeleton.py",
+    "scripts/preset_markers.py",
+    "scripts/skeleton_manifest.py",
+    "scripts/install-preset.py",
+    ".github/**",
+    "Makefile",
+    ".gitignore",
+    "docs/architecture/**",
+    "docs/operations/**",
+    "docs/migration/**",
+    "docs/README.md"
+  ],
+  "project_owned": [
+    "apps/**",
+    ".presets/laravel/**",
+    ".presets/next/**",
+    ".presets/legacy/**",
+    "packages/**",
+    "README.md",
+    "docs/adr/**",
+    ".env.example",
+    ".devctl.json",
+    ".versions/**",
+    "LICENSE",
+    "SECURITY.md"
+  ],
+  "template_only": [
+    "docs/adr/0001-template-boundaries.md",
+    "docs/adr/0002-switchable-presets.md",
+    "scripts/tests",
+    "scripts/init-project.py",
+    "skeleton.manifest.json"
+  ]
+}
